@@ -3,9 +3,9 @@ import requests
 from dotenv import load_dotenv
 from urllib.parse import urlparse
 
-CURRENT_PATH = os.path.dirname(__file__)
-load_dotenv(f"{CURRENT_PATH}/secrets.env")
-ACCESS_TOKEN=ваш_токен_vk
+
+load_dotenv(".env")
+ACCESS_TOKEN=os.getenv("ваш_токен_vk")
 
 
 def shorten_link(token, url):
