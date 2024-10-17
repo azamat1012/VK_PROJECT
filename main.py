@@ -4,8 +4,11 @@ from dotenv import load_dotenv
 from urllib.parse import urlparse
 
 
-load_dotenv(".env")
-ACCESS_TOKEN=os.getenv("ваш_токен_vk")
+def api_request(url, params):
+    """Handles API requests and returns the JSON data or raises an error if needed"""
+    response = requests.get(url, params=params)
+    response.raise_for_status()
+    return response.json()
 
 
 def shorten_link(token, url):
@@ -15,17 +18,9 @@ def shorten_link(token, url):
         "private": 0,
         "v": "5.199"
     }
-    try:
-        response = requests.get(
-            "https://api.vk.com/method/utils.getShortLink", params=params)
-        response.raise_for_status()
-        data = response.json()
-        if 'response' in data:
-            return data['response']['short_url']
-        else:
-            return "Ошибка сети: Пожалуйста, введите актуальную ссылку."
-    except requests.exceptions.RequestException as e:
-        return f"Ошибка сети: {e}"
+    response = api_request(
+        "https://api.vk.com/method/utils.getShortLink", params)
+    return response.get('response', {}).get('short_url')
 
 
 def count_clicks(token, link_key):
@@ -35,40 +30,48 @@ def count_clicks(token, link_key):
         "interval": "forever",
         "v": "5.199"
     }
-    try:
-        response = requests.get(
-            "https://api.vk.com/method/utils.getLinkStats", params=params)
-        response.raise_for_status()
-        data = response.json()
-        if 'response' in data:
-            total_clicks = sum(stat['views']
-                               for stat in data['response']['stats'])
-            return total_clicks
-        else:
-            return "Ошибка API: Пожалуйста, попробуйте снова."
-    except requests.exceptions.RequestException as e:
-        return f"Ошибка сети: {e}"
+    response = api_request(
+        "https://api.vk.com/method/utils.getLinkStats", params)
+    stats = response.get('response', {}).get('stats', [])
+    return sum(stat.get('views', 0) for stat in stats)
 
 
-def is_shorten_link(url):
+def is_shortened_link(url):
     parsed_url = urlparse(url)
-    if parsed_url.netloc == "vk.cc" and len(parsed_url.path) <= 7:
-        link_key = parsed_url.path[1:]
-        return count_clicks(ACCESS_TOKEN, link_key)
-    else:
-        return shorten_link(ACCESS_TOKEN, url)
+    return parsed_url.netloc == "vk.cc" and parsed_url.path
+
+
+def process_link(url, token):
+    """Processes the URL: if shortened, returns click count; if not, returns shortened link"""
+    if is_shortened_link(url):
+        link_key = urlparse(url).path[1:]
+        return 'clicks', count_clicks(token, link_key)
+    return 'short_url', shorten_link(token, url)
+
+
+def display_result(link_type, proccessed_link):
+    if link_type == 'clicks':
+        print(f"Общее количество кликов по ссылке: {proccessed_link}")
+    elif link_type == 'short_url':
+        if proccessed_link:
+            print(f"Сокращенная ссылка: {proccessed_link}")
+        else:
+            print("Error. Please enter a valid link")
 
 
 def main():
+    load_dotenv(".env")
+    access_token = os.getenv("ACCESS_TOKEN")
+    if not access_token:
+        raise EnvironmentError(
+            "There's no such token in the '.env'. Please,write a valid one")
+
     url = input("Введите ссылку: ")
     try:
-        result = is_shorten_link(url)
-        if isinstance(result, int):
-            print(f"Общее количество кликов по ссылке: {result}")
-        else:
-            print(f"Сокращенная ссылка: {result}")
-    except Exception as e:
-        print(f"Произошла ошибка: {e}")
+        link_type, proccessed_link = process_link(url, access_token)
+        display_result(link_type, proccessed_link)
+    except requests.exceptions.HTTPError:
+        print("HTTP error: Please check that you entered a token or a link correctly.")
 
 
 if __name__ == "__main__":
