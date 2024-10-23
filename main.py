@@ -39,8 +39,8 @@ def is_shortened_link(url):
 
 def main():
     load_dotenv(".env")
-    access_token = os.getenv("ACCESS_TOKEN")
-    if not access_token:
+    vk_access_token = os.getenv("VK_ACCESS_TOKEN")
+    if not vk_access_token:
         raise EnvironmentError(
             "There's no such token in the '.env'. Please,write a valid one")
     parser = argparse.ArgumentParser(
@@ -53,10 +53,10 @@ def main():
     try:
         if is_shortened_link(url):
             link_key = urlparse(url).path[1:]
-            clicks = count_clicks(access_token, link_key)
+            clicks = count_clicks(vk_access_token, link_key)
             print(f"Общее количество кликов по  ссылке: {clicks}")
         else:
-            short_url = shorten_link(access_token, url)
+            short_url = shorten_link(vk_access_token, url)
             if short_url:
                 print(f"Сокращенная ссылка: {short_url}")
             else:
