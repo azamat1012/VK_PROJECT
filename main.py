@@ -1,5 +1,6 @@
 import os
 import requests
+import argparse
 from dotenv import load_dotenv
 from urllib.parse import urlparse
 
@@ -42,8 +43,13 @@ def main():
     if not access_token:
         raise EnvironmentError(
             "There's no such token in the '.env'. Please,write a valid one")
+    parser = argparse.ArgumentParser(
+        description="Shorten a URL or get click statistics for a shortened URL.")
+    parser.add_argument(
+        "url", help="This will  show the  shortenn form of link  you've sent")
+    args = parser.parse_args()
 
-    url = input("Введите ссылку: ")
+    url = args.url
     try:
         if is_shortened_link(url):
             link_key = urlparse(url).path[1:]
